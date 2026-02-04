@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { decodeTeam } from "@/lib/team-codec";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,8 +9,14 @@ import { Separator } from "@/components/ui/separator";
 
 const LS_KEY = "pokepages.team.v1";
 
-export function useTeam() {
+export function useTeam(initialCode?: string) {
   const [team, setTeam] = useState<string[]>(() => {
+    // priority: URL team code (share link) overrides localStorage on first load
+    if (typeof window !== "undefined" && initialCode) {
+      const decoded = decodeTeam(initialCode);
+      if (decoded.length) return decoded;
+    }
+
     if (typeof window === "undefined") return [];
     try {
       const raw = window.localStorage.getItem(LS_KEY);
@@ -18,6 +25,8 @@ export function useTeam() {
       return [];
     }
   });
+
+  // persist
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(team));
@@ -26,19 +35,26 @@ export function useTeam() {
 
   const setMember = (name: string) => {
     setTeam((prev) => {
-      if (prev.includes(name)) return prev;
+      const n = name.trim().toLowerCase();
+      if (!n) return prev;
+      if (prev.includes(n)) return prev;
       if (prev.length >= 6) return prev;
-      return [...prev, name];
+      return [...prev, n];
     });
   };
 
   const removeMember = (name: string) => setTeam((prev) => prev.filter((n) => n !== name));
   const clear = () => setTeam([]);
+  const replaceTeam = (names: string[]) => setTeam(names.map((s) => s.trim().toLowerCase()).filter(Boolean).slice(0, 6));
 
-  return { team, setMember, removeMember, clear };
+  return { team, setMember, removeMember, clear, replaceTeam };
 }
 
-export function TeamBuilder({ team, removeMember, clear }: {
+export function TeamBuilder({
+  team,
+  removeMember,
+  clear,
+}: {
   team: string[];
   removeMember: (name: string) => void;
   clear: () => void;
@@ -67,9 +83,7 @@ export function TeamBuilder({ team, removeMember, clear }: {
               <div key={idx} className="flex items-center justify-between rounded-md border px-3 py-2">
                 <div className="text-sm">
                   <span className="text-muted-foreground mr-2">#{idx + 1}</span>
-                  <span className={name ? "capitalize" : "text-muted-foreground"}>
-                    {name || "Empty"}
-                  </span>
+                  <span className={name ? "capitalize" : "text-muted-foreground"}>{name || "Empty"}</span>
                 </div>
                 {name ? (
                   <Button size="sm" variant="ghost" onClick={() => removeMember(name)}>

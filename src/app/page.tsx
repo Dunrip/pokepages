@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -8,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { PokemonCard } from "@/components/PokemonCard";
 import { TeamBuilder, useTeam } from "@/components/TeamBuilder";
+import { TeamShare } from "@/components/TeamShare";
 import { fetchJSON, POKE_API, PokemonListResponse, TypeIndex } from "@/lib/pokeapi";
 
 type Mode = "all" | "type";
@@ -28,7 +31,10 @@ export default function Home() {
   const [count, setCount] = useState(0);
   const [results, setResults] = useState<{ name: string; url: string }[]>([]);
 
-  const { team, setMember, removeMember, clear } = useTeam();
+  const searchParams = useSearchParams();
+  const initialTeamCode = searchParams.get("team") ?? "";
+
+  const { team, setMember, removeMember, clear } = useTeam(initialTeamCode);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim().toLowerCase()), 250);
@@ -242,7 +248,10 @@ export default function Home() {
           </section>
 
           <aside className="lg:sticky lg:top-6 h-fit">
-            <TeamBuilder team={team} removeMember={removeMember} clear={clear} />
+            <div className="space-y-4">
+              <TeamBuilder team={team} removeMember={removeMember} clear={clear} />
+              <TeamShare team={team} />
+            </div>
           </aside>
         </div>
       </div>
