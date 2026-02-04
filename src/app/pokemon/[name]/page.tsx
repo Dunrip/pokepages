@@ -36,7 +36,7 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
         <CardContent>
           <div className="flex gap-4 items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.sprites.front_default} alt={p.name} width={96} height={96} />
+            <img src={p.sprites.front_default ?? undefined} alt={p.name} width={96} height={96} />
             <div>
               <div className="text-sm text-muted-foreground">Types</div>
               <div className="flex gap-2 mt-2 flex-wrap">
