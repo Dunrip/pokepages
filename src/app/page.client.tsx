@@ -11,12 +11,40 @@ import { Separator } from "@/components/ui/separator";
 import { TeamBuilder, useTeam } from "@/components/TeamBuilder";
 import { TeamShare } from "@/components/TeamShare";
 import { Pagination } from "@/components/Pagination";
-import { PokedexTable } from "@/components/PokedexTable";
+import { PokedexTable, SortKey } from "@/components/PokedexTable";
 import { fetchJSONCached } from "@/lib/cache";
 import { hydrateRows } from "@/lib/list-detail";
+import type { PokemonRow } from "@/lib/list-detail";
 import { POKE_API, PokemonListResponse, TypeIndex } from "@/lib/pokeapi";
 
 type Mode = "all" | "type";
+
+function compare(a: PokemonRow, b: PokemonRow, key: SortKey): number {
+  switch (key) {
+    case "id":
+      return a.id - b.id;
+    case "name":
+      return a.name.localeCompare(b.name);
+    case "type":
+      return (a.types[0] ?? "").localeCompare(b.types[0] ?? "");
+    case "total":
+      return a.stats.total - b.stats.total;
+    case "hp":
+      return a.stats.hp - b.stats.hp;
+    case "atk":
+      return a.stats.atk - b.stats.atk;
+    case "def":
+      return a.stats.def - b.stats.def;
+    case "spa":
+      return a.stats.spa - b.stats.spa;
+    case "spd":
+      return a.stats.spd - b.stats.spd;
+    case "spe":
+      return a.stats.spe - b.stats.spe;
+    default:
+      return 0;
+  }
+}
 
 export default function HomeClient() {
   const [mode, setMode] = useState<Mode>("all");
@@ -33,6 +61,9 @@ export default function HomeClient() {
 
   const [count, setCount] = useState(0);
   const [results, setResults] = useState<{ name: string; url: string }[]>([]);
+
+  const [sortKey, setSortKey] = useState<SortKey>("id");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const searchParams = useSearchParams();
   const initialTeamCode = searchParams.get("team") ?? "";
@@ -148,8 +179,7 @@ export default function HomeClient() {
         ];
   }, [typeIndex]);
 
-  // Hydrate list items -> rows with id/sprite/types (PokemonDB-style density)
-  const [hydratedRows, setHydratedRows] = useState<import("@/lib/list-detail").PokemonRow[]>([]);
+  const [hydratedRows, setHydratedRows] = useState<PokemonRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +193,6 @@ export default function HomeClient() {
         const rows = await hydrateRows(results);
         if (!cancelled) setHydratedRows(rows);
       } catch {
-        // if detail hydration fails, fall back to empty
         if (!cancelled) setHydratedRows([]);
       }
     }
@@ -173,37 +202,89 @@ export default function HomeClient() {
     };
   }, [results, loading, err]);
 
-  const hasData = hydratedRows.length > 0;
+  const displayRows = useMemo(() => {
+    const out = [...hydratedRows];
+    out.sort((a, b) => compare(a, b, sortKey));
+    if (sortDir === "desc") out.reverse();
+    return out;
+  }, [hydratedRows, sortKey, sortDir]);
+
+  function onSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const hasData = displayRows.length > 0;
 
   return (
     <main className="min-h-[calc(100vh-3.5rem)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Pokédex</h1>
-            <p className="text-sm text-muted-foreground">Dense table view (like PokémonDB) + team builder.</p>
+        <header className="flex flex-col items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">Pokédex</h1>
+          <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border bg-card px-4 py-3 w-full max-w-3xl">
+            <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-1">
+              <div className="text-sm text-muted-foreground w-12 text-right">Name:</div>
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="e.g. pikachu"
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="text-sm text-muted-foreground w-12 text-right">Type:</div>
+              <Select
+                value={mode === "type" ? type : "__all"}
+                onValueChange={(v) => {
+                  if (v === "__all") {
+                    setMode("all");
+                  } else {
+                    setMode("type");
+                    setType(v);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">- All -</SelectItem>
+                  {typeOptions.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      <span className="capitalize">{t}</span>
+                      {typeIndex?.types?.[t]?.total ? (
+                        <span className="ml-2 text-muted-foreground">({typeIndex.types[t].total})</span>
+                      ) : null}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">Per page:</div>
+              <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[12, 24, 48].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name (e.g., pikachu)"
-              className="sm:w-[260px]"
-            />
-
-            <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Limit" />
-              </SelectTrigger>
-              <SelectContent>
-                {[12, 24, 48].map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n}/page
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="text-sm text-muted-foreground">
+            {debounced ? "Search result" : `${count.toLocaleString()} total`} · Page {page} / {totalPages}
           </div>
         </header>
 
@@ -211,44 +292,8 @@ export default function HomeClient() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           <section>
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-              <div className="flex gap-2 items-center flex-wrap">
-                <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Pokémon</SelectItem>
-                    <SelectItem value="type">By Type</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {mode === "type" ? (
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {typeOptions.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          <span className="capitalize">{t}</span>
-                          {typeIndex?.types?.[t]?.total ? (
-                            <span className="ml-2 text-muted-foreground">({typeIndex.types[t].total})</span>
-                          ) : null}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : null}
-              </div>
-
-              <div className="text-sm text-muted-foreground">
-                {debounced ? "Search result" : `${count.toLocaleString()} total`} · Page {page} / {totalPages}
-              </div>
-            </div>
-
             {err ? (
-              <div className="mt-4 rounded-lg border bg-card p-4">
+              <div className="mt-0 rounded-lg border bg-card p-4">
                 <p className="text-sm font-medium text-destructive">Couldn’t load Pokémon</p>
                 <p className="text-sm text-muted-foreground mt-1">{err}</p>
                 <Button className="mt-3" variant="secondary" onClick={() => window.location.reload()}>
@@ -257,14 +302,7 @@ export default function HomeClient() {
               </div>
             ) : null}
 
-            {!err && debounced && !loading && results.length === 0 ? (
-              <div className="mt-4 rounded-lg border bg-card p-4">
-                <p className="text-sm font-medium">No Pokémon found</p>
-                <p className="text-sm text-muted-foreground mt-1">Try a different name (e.g. “eevee”).</p>
-              </div>
-            ) : null}
-
-            <div className="mt-4">
+            <div className="mt-0">
               {loading ? (
                 <div className="space-y-2">
                   {Array.from({ length: Math.min(limit, 12) }).map((_, i) => (
@@ -275,9 +313,12 @@ export default function HomeClient() {
                 </div>
               ) : hasData ? (
                 <PokedexTable
-                  rows={hydratedRows}
+                  rows={displayRows}
                   team={team}
                   onToggleTeam={(name) => (team.includes(name) ? removeMember(name) : setMember(name))}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={onSort}
                 />
               ) : (
                 <div className="rounded-lg border bg-card p-4">
