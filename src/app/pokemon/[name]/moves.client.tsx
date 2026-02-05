@@ -39,7 +39,8 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [moves]);
 
-  const [vg, setVg] = useState<string>(versionGroups[versionGroups.length - 1] ?? "");
+  const ALL = "__all__";
+  const [vg, setVg] = useState<string>(versionGroups[versionGroups.length - 1] ?? ALL);
 
   const grouped = useMemo(() => {
     const out: Record<string, Array<{ name: string; level?: number }>> = {
@@ -56,7 +57,7 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
       if (needle && !name.includes(needle)) continue;
 
       const details = m.version_group_details ?? [];
-      const match = vg ? details.filter((d) => d.version_group?.name === vg) : details;
+      const match = vg && vg !== ALL ? details.filter((d) => d.version_group?.name === vg) : details;
       for (const d of match) {
         const method = (d.move_learn_method?.name ?? "other") as string;
         if (method === "level-up") {
@@ -99,9 +100,9 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
               <SelectValue placeholder="Select version group" />
             </SelectTrigger>
             <SelectContent>
-              {versionGroups.map((v) => (
+              {[ALL, ...versionGroups].map((v) => (
                 <SelectItem key={v} value={v}>
-                  {titleCase(v)}
+                  {v === ALL ? "All versions" : titleCase(v)}
                 </SelectItem>
               ))}
             </SelectContent>
