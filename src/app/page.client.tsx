@@ -151,7 +151,7 @@ export default function HomeClient() {
 
   return (
     <main className="min-h-[calc(100vh-3.5rem)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Pokédex</h1>
@@ -247,7 +247,7 @@ export default function HomeClient() {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 mt-4">
               {loading
                 ? Array.from({ length: Math.min(limit, 12) }).map((_, i) => (
                     <div key={i} className="border rounded-lg p-3 bg-card">
