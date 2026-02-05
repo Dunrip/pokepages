@@ -71,6 +71,17 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
     }
 
     out["level-up"].sort((a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name));
+
+    // dedupe level-up by (name, level)
+    {
+      const seen = new Set<string>();
+      out["level-up"] = out["level-up"].filter((x) => {
+        const k = `${x.name}@${x.level ?? 0}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    }
     for (const k of ["machine", "egg", "tutor", "other"]) {
       out[k].sort((a, b) => a.name.localeCompare(b.name));
     }
