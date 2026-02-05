@@ -6,18 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { encodeTeam } from "@/lib/team-codec";
+import { useMounted } from "@/lib/use-mounted";
 import { toast } from "sonner";
 
 export function TeamShare({ team }: { team: string[] }) {
+  const mounted = useMounted();
   const code = useMemo(() => encodeTeam(team), [team]);
 
   const links = useMemo(() => {
-    if (typeof window === "undefined") return { query: "", pretty: "" };
+    if (!mounted) return { query: "", pretty: "" };
     const base = window.location.origin;
     const query = code ? `${base}/?team=${encodeURIComponent(code)}` : "";
     const pretty = code ? `${base}/team/${encodeURIComponent(code)}` : "";
     return { query, pretty };
-  }, [code]);
+  }, [code, mounted]);
 
   async function copy(text: string, label: string) {
     if (!text) return;

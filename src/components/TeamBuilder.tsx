@@ -9,22 +9,29 @@ import { Separator } from "@/components/ui/separator";
 
 const LS_KEY = "pokepages.team.v1";
 
-export function useTeam(initialCode?: string) {
-  const [team, setTeam] = useState<string[]>(() => {
-    // priority: URL team code (share link) overrides localStorage on first load
-    if (typeof window !== "undefined" && initialCode) {
-      const decoded = decodeTeam(initialCode);
-      if (decoded.length) return decoded;
-    }
+function safeLoadTeam(initialCode?: string) {
+  // priority: URL team code overrides localStorage on first load
+  if (initialCode) {
+    const decoded = decodeTeam(initialCode);
+    if (decoded.length) return decoded;
+  }
 
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = window.localStorage.getItem(LS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function useTeam(initialCode?: string) {
+  // Always start empty for SSR/first client paint; then hydrate from URL/localStorage.
+  const [team, setTeam] = useState<string[]>([]);
+
+  useEffect(() => {
+    setTeam(safeLoadTeam(initialCode));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // persist
   useEffect(() => {
