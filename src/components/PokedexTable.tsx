@@ -78,7 +78,7 @@ export function PokedexTable({
   onSort: (key: SortKey) => void;
 }) {
   return (
-    <div className="rounded-xl border bg-card overflow-x-auto">
+    <div className="rounded-xl border bg-card overflow-x-auto shadow-sm">
       <Table>
         <TableHeader className="sticky top-0 z-20 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/60 border-b">
           <TableRow className="h-11">
@@ -101,7 +101,7 @@ export function PokedexTable({
           {rows.map((p) => {
             const selected = team.includes(p.name);
             return (
-              <TableRow key={p.name} className="hover:bg-muted/50">
+              <TableRow key={p.name} className="hover:bg-muted/50 h-12">
                 <TableCell className="font-mono text-muted-foreground whitespace-nowrap">
                   {String(p.id).padStart(4, "0")}
                 </TableCell>

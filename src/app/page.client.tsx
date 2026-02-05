@@ -81,6 +81,21 @@ export default function HomeClient() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // keyboard shortcut: / focuses search
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "/") return;
+      const t = e.target as HTMLElement | null;
+      const isTyping = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (isTyping) return;
+      e.preventDefault();
+      const el = document.getElementById("pokedex-search") as HTMLInputElement | null;
+      el?.focus();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     loadPokedexIndex()
@@ -142,7 +157,8 @@ export default function HomeClient() {
   return (
     <main className="min-h-[calc(100vh-3.5rem)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <header className="flex flex-col items-center gap-3">
+        <header className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="flex flex-col items-center gap-3">
           <div className="w-full flex items-center justify-between">
             <div className="w-[140px]" />
             <h1 className="text-3xl font-bold tracking-tight text-center flex-1">Pokédex</h1>
@@ -156,7 +172,7 @@ export default function HomeClient() {
           <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border bg-card px-4 py-3 w-full max-w-3xl">
             <div className="flex items-center gap-2 w-full sm:flex-1">
               <div className="text-sm text-muted-foreground w-12 text-right">Name:</div>
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="e.g. pikachu" />
+              <Input id="pokedex-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="e.g. pikachu" />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -196,7 +212,8 @@ export default function HomeClient() {
           <div className="text-sm text-muted-foreground">
             {index ? `${total.toLocaleString()} found` : "Loading…"} · Page {effectivePage} / {totalPages}
           </div>
-        </header>
+                </div>
+      </header>
 
         <Separator className="my-6" />
 
