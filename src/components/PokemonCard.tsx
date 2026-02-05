@@ -18,7 +18,7 @@ export function PokemonCard({
 
   return (
     <Card className={selected ? "ring-2 ring-primary" : ""}>
-      <CardContent className="p-3 pt-10 relative">
+      <CardContent className="p-3 pt-9 relative">
         {typeof selected === "boolean" ? (
           <Button
             type="button"
@@ -38,21 +38,20 @@ export function PokemonCard({
         <div className="flex items-center gap-3">
           {id ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={spriteUrl(id)} alt={name} width={56} height={56} />
+            <img src={spriteUrl(id)} alt={name} width={44} height={44} className="shrink-0" />
           ) : null}
 
           <div className="min-w-0 flex-1">
             <Link
               href={`/pokemon/${name}`}
-              className="font-semibold capitalize hover:underline block"
+              className="font-semibold capitalize hover:underline block text-sm leading-tight"
               title={name}
             >
-              {/* Avoid truncate: showing only first letter on some layouts */}
-              <span className="truncate">{name}</span>
+              <span className="truncate block">{name}</span>
             </Link>
 
             {id ? (
-              <div className="text-xs text-muted-foreground">#{String(id).padStart(4, "0")}</div>
+              <div className="text-[11px] text-muted-foreground">#{String(id).padStart(4, "0")}</div>
             ) : null}
           </div>
         </div>
