@@ -109,7 +109,7 @@ export function PokedexTable({
                 <TableCell>
                   {p.sprite ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.sprite} alt={p.name} width={36} height={36} className="shrink-0" />
+                    <img src={p.sprite} alt={p.name} width={48} height={48} className="shrink-0" />
                   ) : null}
                 </TableCell>
 
