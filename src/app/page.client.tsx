@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
@@ -8,11 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { TeamBuilder, useTeam } from "@/components/TeamBuilder";
-import { TeamShare } from "@/components/TeamShare";
 import { Pagination } from "@/components/Pagination";
 import { PokedexTable, SortKey } from "@/components/PokedexTable";
 import { loadPokedexIndex } from "@/lib/pokedex-index";
+import { useTeam } from "@/components/TeamBuilder";
 
 export type PokemonRow = {
   id: number;
@@ -74,7 +74,7 @@ export default function HomeClient() {
 
   const searchParams = useSearchParams();
   const initialTeamCode = searchParams.get("team") ?? "";
-  const { team, setMember, removeMember, clear } = useTeam(initialTeamCode);
+  const { team, setMember, removeMember } = useTeam(initialTeamCode);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim().toLowerCase()), 250);
@@ -143,7 +143,15 @@ export default function HomeClient() {
     <main className="min-h-[calc(100vh-3.5rem)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <header className="flex flex-col items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">Pokédex</h1>
+          <div className="w-full flex items-center justify-between">
+            <div className="w-[140px]" />
+            <h1 className="text-3xl font-bold tracking-tight text-center flex-1">Pokédex</h1>
+            <div className="w-[140px] flex justify-end">
+              <Link href="/team" className="text-sm underline">
+                Team ({team.length}/6)
+              </Link>
+            </div>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border bg-card px-4 py-3 w-full max-w-3xl">
             <div className="flex items-center gap-2 w-full sm:flex-1">
@@ -192,56 +200,45 @@ export default function HomeClient() {
 
         <Separator className="my-6" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          <section>
-            {indexErr ? (
-              <div className="rounded-lg border bg-card p-4">
-                <p className="text-sm font-medium text-destructive">Couldn’t load index</p>
-                <p className="text-sm text-muted-foreground mt-1">{indexErr}</p>
-                <Button className="mt-3" variant="secondary" onClick={() => window.location.reload()}>
-                  Retry
-                </Button>
+        {indexErr ? (
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm font-medium text-destructive">Couldn’t load index</p>
+            <p className="text-sm text-muted-foreground mt-1">{indexErr}</p>
+            <Button className="mt-3" variant="secondary" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
+
+        {!index && !indexErr ? (
+          <div className="space-y-2">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="h-12 rounded-lg border bg-card">
+                <Skeleton className="h-full w-full" />
               </div>
-            ) : null}
+            ))}
+          </div>
+        ) : null}
 
-            {!index && !indexErr ? (
-              <div className="space-y-2">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="h-12 rounded-lg border bg-card">
-                    <Skeleton className="h-full w-full" />
-                  </div>
-                ))}
-              </div>
-            ) : null}
+        {index && !indexErr ? (
+          <PokedexTable
+            rows={pageRows}
+            team={team}
+            onToggleTeam={(name) => (team.includes(name) ? removeMember(name) : setMember(name))}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+          />
+        ) : null}
 
-            {index && !indexErr ? (
-              <PokedexTable
-                rows={pageRows}
-                team={team}
-                onToggleTeam={(name) => (team.includes(name) ? removeMember(name) : setMember(name))}
-                sortKey={sortKey}
-                sortDir={sortDir}
-                onSort={onSort}
-              />
-            ) : null}
-
-            {index && !indexErr ? (
-              <div className="mt-6 space-y-2">
-                <Pagination page={effectivePage} totalPages={totalPages} onPage={(p) => setPage(p)} />
-                <div className="text-xs text-muted-foreground text-center">
-                  Showing {Math.min(limit, pageRows.length)} of {total.toLocaleString()}
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <aside className="lg:sticky lg:top-20 h-fit">
-            <div className="space-y-4">
-              <TeamBuilder team={team} removeMember={removeMember} clear={clear} />
-              <TeamShare team={team} />
+        {index && !indexErr ? (
+          <div className="mt-6 space-y-2">
+            <Pagination page={effectivePage} totalPages={totalPages} onPage={(p) => setPage(p)} />
+            <div className="text-xs text-muted-foreground text-center">
+              Showing {Math.min(limit, pageRows.length)} of {total.toLocaleString()}
             </div>
-          </aside>
-        </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );
