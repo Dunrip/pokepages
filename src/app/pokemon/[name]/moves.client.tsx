@@ -40,7 +40,7 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
   }, [moves]);
 
   const ALL = "__all__";
-  const [vg, setVg] = useState<string>(versionGroups[versionGroups.length - 1] ?? ALL);
+  const [vg, setVg] = useState<string>(ALL);
 
   const grouped = useMemo(() => {
     const out: Record<string, Array<{ name: string; level?: number }>> = {
