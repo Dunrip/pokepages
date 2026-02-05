@@ -80,8 +80,8 @@ export function PokedexTable({
   return (
     <div className="rounded-xl border bg-card overflow-x-auto">
       <Table>
-        <TableHeader className="sticky top-0 bg-card z-10">
-          <TableRow>
+        <TableHeader className="sticky top-0 z-20 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/60 border-b">
+          <TableRow className="h-11">
             <SortTh label="#" active={sortKey === "id"} dir={sortDir} onClick={() => onSort("id")} className="w-[76px]" />
             <TableHead className="w-[56px]"></TableHead>
             <SortTh label="Name" active={sortKey === "name"} dir={sortDir} onClick={() => onSort("name")} />
