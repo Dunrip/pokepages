@@ -8,11 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { PokemonCard } from "@/components/PokemonCard";
 import { TeamBuilder, useTeam } from "@/components/TeamBuilder";
 import { TeamShare } from "@/components/TeamShare";
 import { Pagination } from "@/components/Pagination";
+import { PokedexTable } from "@/components/PokedexTable";
 import { fetchJSONCached } from "@/lib/cache";
+import { hydrateRows } from "@/lib/list-detail";
 import { POKE_API, PokemonListResponse, TypeIndex } from "@/lib/pokeapi";
 
 type Mode = "all" | "type";
@@ -147,7 +148,32 @@ export default function HomeClient() {
         ];
   }, [typeIndex]);
 
-  const hasData = results.length > 0;
+  // Hydrate list items -> rows with id/sprite/types (PokemonDB-style density)
+  const [hydratedRows, setHydratedRows] = useState<import("@/lib/list-detail").PokemonRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (loading || err) return;
+      if (!results.length) {
+        setHydratedRows([]);
+        return;
+      }
+      try {
+        const rows = await hydrateRows(results);
+        if (!cancelled) setHydratedRows(rows);
+      } catch {
+        // if detail hydration fails, fall back to empty
+        if (!cancelled) setHydratedRows([]);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [results, loading, err]);
+
+  const hasData = hydratedRows.length > 0;
 
   return (
     <main className="min-h-[calc(100vh-3.5rem)]">
@@ -155,9 +181,7 @@ export default function HomeClient() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Pokédex</h1>
-            <p className="text-sm text-muted-foreground">
-              Browse with page numbers, filter by type, and build a 6-slot team.
-            </p>
+            <p className="text-sm text-muted-foreground">Dense table view (like PokémonDB) + team builder.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -240,35 +264,26 @@ export default function HomeClient() {
               </div>
             ) : null}
 
-            {!err && !loading && !debounced && !hasData ? (
-              <div className="mt-4 rounded-lg border bg-card p-4">
-                <p className="text-sm font-medium">Nothing to show</p>
-                <p className="text-sm text-muted-foreground mt-1">Try changing the filters.</p>
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 mt-4">
-              {loading
-                ? Array.from({ length: Math.min(limit, 12) }).map((_, i) => (
-                    <div key={i} className="border rounded-lg p-3 bg-card">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-14 w-14 rounded" />
-                        <div className="flex-1">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-3 w-14 mt-2" />
-                        </div>
-                      </div>
+            <div className="mt-4">
+              {loading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: Math.min(limit, 12) }).map((_, i) => (
+                    <div key={i} className="h-12 rounded-lg border bg-card">
+                      <Skeleton className="h-full w-full" />
                     </div>
-                  ))
-                : results.map((p) => (
-                    <PokemonCard
-                      key={p.name}
-                      name={p.name}
-                      url={p.url}
-                      selected={team.includes(p.name)}
-                      onToggleSelect={() => (team.includes(p.name) ? removeMember(p.name) : setMember(p.name))}
-                    />
                   ))}
+                </div>
+              ) : hasData ? (
+                <PokedexTable
+                  rows={hydratedRows}
+                  team={team}
+                  onToggleTeam={(name) => (team.includes(name) ? removeMember(name) : setMember(name))}
+                />
+              ) : (
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-sm text-muted-foreground">No data to display.</p>
+                </div>
+              )}
             </div>
 
             {!debounced && !err ? (
