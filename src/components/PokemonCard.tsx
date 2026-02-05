@@ -48,7 +48,7 @@ export function PokemonCard({
               title={name}
             >
               {/* Avoid truncate: showing only first letter on some layouts */}
-              <span className="break-words">{name}</span>
+              <span className="truncate">{name}</span>
             </Link>
 
             {id ? (
