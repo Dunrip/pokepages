@@ -5,12 +5,20 @@ import { Separator } from "@/components/ui/separator";
 import { TypeBadge } from "@/components/TypeBadge";
 import { EvolutionChain } from "@/components/EvolutionChain";
 import { KeyValueTable } from "@/components/KeyValueTable";
+import { EncounterTable } from "@/components/EncounterTable";
 import { fetchEvolutionChain } from "@/lib/evolution";
+import { fetchEncounters } from "@/lib/encounters";
 import type { PokemonDetail } from "@/lib/pokemon-types";
 import type { PokemonDetailExtra, PokemonMoveEntry } from "@/lib/pokemon-extra-types";
 import type { PokemonSpecies } from "@/lib/species-types";
 import { eggCycles, genderRatio, titleCase } from "@/lib/species-utils";
 import MovesList from "./moves.client";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 function StatRow({ label, value }: { label: string; value: number }) {
   return (
@@ -42,10 +50,12 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
   const p = (await r.json()) as PokemonDetail & PokemonDetailExtra;
 
   const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${p.name}`, { next: { revalidate: 3600 } });
-  const species = speciesRes.ok ? ((await speciesRes.json()) as PokemonSpecies & {
-    genera?: Array<{ genus: string; language: { name: string } }>;
-    flavor_text_entries?: Array<{ flavor_text: string; language: { name: string } }>;
-  }) : null;
+  const species = speciesRes.ok
+    ? ((await speciesRes.json()) as PokemonSpecies & {
+        genera?: Array<{ genus: string; language: { name: string } }>;
+        flavor_text_entries?: Array<{ flavor_text: string; language: { name: string } }>;
+      })
+    : null;
 
   const genus = species?.genera?.find((g) => g.language.name === "en")?.genus;
   const flavor = species?.flavor_text_entries
@@ -63,10 +73,11 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
   const evo = await fetchEvolutionChain(p.name).catch(() => null);
   const moves = (p.moves ?? []) as PokemonMoveEntry[];
 
-  const evYield = p.stats
-    .filter((s) => s.effort > 0)
-    .map((s) => `${titleCase(s.stat.name)} +${s.effort}`)
-    .join(", ") || "None";
+  const evYield =
+    p.stats
+      .filter((s) => s.effort > 0)
+      .map((s) => `${titleCase(s.stat.name)} +${s.effort}`)
+      .join(", ") || "None";
 
   const trainingRows = species
     ? [
@@ -92,9 +103,9 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
       })()
     : [];
 
-  const varietyNames = (species?.varieties ?? [])
-    .map((v) => v.pokemon.name)
-    .filter(Boolean);
+  const varietyNames = (species?.varieties ?? []).map((v) => v.pokemon.name).filter(Boolean);
+
+  const encounters = await fetchEncounters(p.id).catch(() => []);
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -140,7 +151,6 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        {/* Pokedex data */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pokédex data</CardTitle>
@@ -158,7 +168,6 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
           </CardContent>
         </Card>
 
-        {/* Base stats */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Base stats</CardTitle>
@@ -180,7 +189,6 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
         </Card>
       </div>
 
-      {/* Training + Breeding */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <Card>
           <CardHeader>
@@ -203,20 +211,23 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
         </Card>
       </div>
 
-      {/* Location */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Location</CardTitle>
         </CardHeader>
         <Separator />
         <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">
-            Encounters are game-specific. We’ll add encounter tables here next.
-          </p>
+          <Accordion type="single" collapsible defaultValue="encounters">
+            <AccordionItem value="encounters">
+              <AccordionTrigger>Encounters (game-specific)</AccordionTrigger>
+              <AccordionContent>
+                <EncounterTable encounters={encounters} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
 
-      {/* Evolution chain */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Evolution chain</CardTitle>
@@ -227,7 +238,6 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
         </CardContent>
       </Card>
 
-      {/* Moves */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Moves</CardTitle>
