@@ -42,7 +42,7 @@ function SortTh({
   label: string;
   active: boolean;
   dir: "asc" | "desc";
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   className?: string;
 }) {
   return (
@@ -54,6 +54,7 @@ function SortTh({
           "inline-flex items-center font-semibold hover:underline underline-offset-4 " +
           (active ? "text-foreground" : "text-muted-foreground")
         }
+        title="Click to sort. Shift-click to set secondary sort."
       >
         {label}
         <SortIcon dir={active ? dir : null} />
@@ -76,7 +77,7 @@ export function PokedexTable({
   onToggleTeam: (name: string) => void;
   sortKey: SortKey;
   sortDir: "asc" | "desc";
-  onSort: (key: SortKey) => void;
+  onSort: (key: SortKey, e?: { shiftKey?: boolean }) => void;
   onResetSort?: () => void;
 }) {
   return (
@@ -84,6 +85,7 @@ export function PokedexTable({
       <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/40">
         <div className="text-xs text-muted-foreground">
           Sort: <span className="font-medium text-foreground">{sortKey}</span> ({sortDir})
+          <span className="ml-2">· Shift-click adds secondary sort</span>
         </div>
         {onResetSort ? (
           <Button size="sm" variant="ghost" onClick={onResetSort}>
@@ -95,29 +97,17 @@ export function PokedexTable({
       <Table>
         <TableHeader className="sticky top-0 z-20 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/60 border-b">
           <TableRow className="h-11">
-            <SortTh
-              label="#"
-              active={sortKey === "id"}
-              dir={sortDir}
-              onClick={() => onSort("id")}
-              className="w-[88px]"
-            />
+            <SortTh label="#" active={sortKey === "id"} dir={sortDir} onClick={(e) => onSort("id", e)} className="w-[88px]" />
             <TableHead className="w-[64px]"></TableHead>
-            <SortTh label="Name" active={sortKey === "name"} dir={sortDir} onClick={() => onSort("name")} />
-            <SortTh label="Type" active={sortKey === "type"} dir={sortDir} onClick={() => onSort("type")} className="min-w-[180px]" />
-            <SortTh
-              label="Total"
-              active={sortKey === "total"}
-              dir={sortDir}
-              onClick={() => onSort("total")}
-              className="text-right"
-            />
-            <SortTh label="HP" active={sortKey === "hp"} dir={sortDir} onClick={() => onSort("hp")} className="text-right" />
-            <SortTh label="Atk" active={sortKey === "atk"} dir={sortDir} onClick={() => onSort("atk")} className="text-right" />
-            <SortTh label="Def" active={sortKey === "def"} dir={sortDir} onClick={() => onSort("def")} className="text-right" />
-            <SortTh label="SpA" active={sortKey === "spa"} dir={sortDir} onClick={() => onSort("spa")} className="text-right" />
-            <SortTh label="SpD" active={sortKey === "spd"} dir={sortDir} onClick={() => onSort("spd")} className="text-right" />
-            <SortTh label="Spe" active={sortKey === "spe"} dir={sortDir} onClick={() => onSort("spe")} className="text-right" />
+            <SortTh label="Name" active={sortKey === "name"} dir={sortDir} onClick={(e) => onSort("name", e)} className="min-w-[220px]" />
+            <SortTh label="Type" active={sortKey === "type"} dir={sortDir} onClick={(e) => onSort("type", e)} className="min-w-[180px]" />
+            <SortTh label="Total" active={sortKey === "total"} dir={sortDir} onClick={(e) => onSort("total", e)} className="text-right" />
+            <SortTh label="HP" active={sortKey === "hp"} dir={sortDir} onClick={(e) => onSort("hp", e)} className="text-right" />
+            <SortTh label="Atk" active={sortKey === "atk"} dir={sortDir} onClick={(e) => onSort("atk", e)} className="text-right" />
+            <SortTh label="Def" active={sortKey === "def"} dir={sortDir} onClick={(e) => onSort("def", e)} className="text-right" />
+            <SortTh label="SpA" active={sortKey === "spa"} dir={sortDir} onClick={(e) => onSort("spa", e)} className="text-right" />
+            <SortTh label="SpD" active={sortKey === "spd"} dir={sortDir} onClick={(e) => onSort("spd", e)} className="text-right" />
+            <SortTh label="Spe" active={sortKey === "spe"} dir={sortDir} onClick={(e) => onSort("spe", e)} className="text-right" />
             <TableHead className="w-[56px]"></TableHead>
           </TableRow>
         </TableHeader>

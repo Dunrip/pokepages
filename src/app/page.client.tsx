@@ -13,6 +13,7 @@ import { Pagination } from "@/components/Pagination";
 import { PokedexTable, SortKey } from "@/components/PokedexTable";
 import { loadPokedexIndex } from "@/lib/pokedex-index";
 import { useTeam } from "@/components/TeamBuilder";
+import type { SortSpec } from "@/lib/sort-types";
 
 export type PokemonRow = {
   id: number;
@@ -30,7 +31,7 @@ export type PokemonRow = {
   };
 };
 
-function compare(a: PokemonRow, b: PokemonRow, key: SortKey): number {
+function compareOne(a: PokemonRow, b: PokemonRow, key: SortKey): number {
   switch (key) {
     case "id":
       return a.id - b.id;
@@ -57,6 +58,14 @@ function compare(a: PokemonRow, b: PokemonRow, key: SortKey): number {
   }
 }
 
+function compareMany(a: PokemonRow, b: PokemonRow, specs: SortSpec[]): number {
+  for (const s of specs) {
+    const c = compareOne(a, b, s.key);
+    if (c !== 0) return s.dir === "asc" ? c : -c;
+  }
+  return 0;
+}
+
 export default function HomeClient() {
   const [index, setIndex] = useState<PokemonRow[] | null>(null);
   const [indexErr, setIndexErr] = useState<string | null>(null);
@@ -69,8 +78,14 @@ export default function HomeClient() {
 
   const [type, setType] = useState<string>("__all");
 
-  const [sortKey, setSortKey] = useState<SortKey>("id");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // max 2 keys like PokémonDB (primary + tie-breaker)
+  const [sorts, setSorts] = useState<SortSpec[]>([
+    { key: "id", dir: "asc" },
+    { key: "name", dir: "asc" },
+  ]);
+
+  const sortKey = sorts[0]?.key ?? "id";
+  const sortDir = sorts[0]?.dir ?? "asc";
 
   const searchParams = useSearchParams();
   const initialTeamCode = searchParams.get("team") ?? "";
@@ -133,10 +148,9 @@ export default function HomeClient() {
 
   const sorted = useMemo(() => {
     const out = [...filtered];
-    out.sort((a, b) => compare(a, b, sortKey));
-    if (sortDir === "desc") out.reverse();
+    out.sort((a, b) => compareMany(a, b, sorts));
     return out;
-  }, [filtered, sortKey, sortDir]);
+  }, [filtered, sorts]);
 
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -146,81 +160,98 @@ export default function HomeClient() {
   const pageRows = sorted.slice(start, start + limit);
 
   function onResetSort() {
-    setSortKey("id");
-    setSortDir("asc");
+    setSorts([
+      { key: "id", dir: "asc" },
+      { key: "name", dir: "asc" },
+    ]);
   }
 
-  function onSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+  function onSort(key: SortKey, opts?: { add?: boolean }) {
+    const add = !!opts?.add;
+    setSorts((prev) => {
+      const cur0 = prev[0];
+
+      if (!add) {
+        // primary only; if same key, flip dir. Secondary defaults to name (or id if primary isn't id)
+        const nextDir = cur0?.key === key ? (cur0.dir === "asc" ? "desc" : "asc") : "asc";
+        const secondary: SortSpec = key === "id" ? { key: "name", dir: "asc" } : { key: "id", dir: "asc" };
+        return [{ key, dir: nextDir }, secondary];
+      }
+
+      // shift-click: add/replace secondary
+      const primary = cur0 ?? { key: "id" as SortKey, dir: "asc" as const };
+      if (primary.key === key) {
+        return [{ key, dir: primary.dir === "asc" ? "desc" : "asc" }, prev[1] ?? { key: "name", dir: "asc" }];
+      }
+
+      const existingSecondary = prev[1];
+      const nextSecondaryDir = existingSecondary?.key === key ? (existingSecondary.dir === "asc" ? "desc" : "asc") : "asc";
+      return [primary, { key, dir: nextSecondaryDir }];
+    });
   }
 
   return (
     <main className="min-h-[calc(100vh-3.5rem)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <header className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-full flex items-center justify-between">
-            <div className="w-[140px]" />
-            <h1 className="text-3xl font-bold tracking-tight text-center flex-1">Pokédex</h1>
-            <div className="w-[140px] flex justify-end">
-              <Link href="/team" className="text-sm underline">
-                Team ({team.length}/6)
-              </Link>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-full flex items-center justify-between">
+              <div className="w-[140px]" />
+              <h1 className="text-3xl font-bold tracking-tight text-center flex-1">Pokédex</h1>
+              <div className="w-[140px] flex justify-end">
+                <Link href="/team" className="text-sm underline">
+                  Team ({team.length}/6)
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border bg-card px-4 py-3 w-full max-w-3xl">
+              <div className="flex items-center gap-2 w-full sm:flex-1">
+                <div className="text-sm text-muted-foreground w-12 text-right">Name:</div>
+                <Input id="pokedex-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="e.g. pikachu" />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="text-sm text-muted-foreground w-12 text-right">Type:</div>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all">- All -</SelectItem>
+                    {typeOptions.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        <span className="capitalize">{t}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground">Per page:</div>
+                <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[25, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              {index ? `${total.toLocaleString()} found` : "Loading…"} · Page {effectivePage} / {totalPages}
             </div>
           </div>
+        </header>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border bg-card px-4 py-3 w-full max-w-3xl">
-            <div className="flex items-center gap-2 w-full sm:flex-1">
-              <div className="text-sm text-muted-foreground w-12 text-right">Name:</div>
-              <Input id="pokedex-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="e.g. pikachu" />
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="text-sm text-muted-foreground w-12 text-right">Type:</div>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all">- All -</SelectItem>
-                  {typeOptions.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      <span className="capitalize">{t}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="text-sm text-muted-foreground">Per page:</div>
-              <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[25, 50, 100].map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            {index ? `${total.toLocaleString()} found` : "Loading…"} · Page {effectivePage} / {totalPages}
-          </div>
-                </div>
-      </header>
-
-        <Separator className="my-6" />
+        <div className="h-4" />
 
         {indexErr ? (
           <div className="rounded-lg border bg-card p-4">
@@ -249,7 +280,7 @@ export default function HomeClient() {
             onToggleTeam={(name) => (team.includes(name) ? removeMember(name) : setMember(name))}
             sortKey={sortKey}
             sortDir={sortDir}
-            onSort={onSort}
+            onSort={(k, ev) => onSort(k, { add: ev?.shiftKey })}
             onResetSort={onResetSort}
           />
         ) : null}
@@ -262,6 +293,8 @@ export default function HomeClient() {
             </div>
           </div>
         ) : null}
+
+        <Separator className="my-10" />
       </div>
     </main>
   );
