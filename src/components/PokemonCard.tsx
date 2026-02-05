@@ -18,13 +18,13 @@ export function PokemonCard({
 
   return (
     <Card className={selected ? "ring-2 ring-primary" : ""}>
-      <CardContent className="p-3 relative">
+      <CardContent className="p-3 pt-10 relative">
         {typeof selected === "boolean" ? (
           <Button
             type="button"
             size="icon"
             variant={selected ? "default" : "secondary"}
-            className="absolute right-2 top-2 h-7 w-7 rounded-full"
+            className="absolute right-2 top-2 h-7 w-7 rounded-full z-10"
             title={selected ? "Remove from team" : "Add to team"}
             onClick={(e) => {
               e.preventDefault();
@@ -41,7 +41,7 @@ export function PokemonCard({
             <img src={spriteUrl(id)} alt={name} width={56} height={56} />
           ) : null}
 
-          <div className="min-w-0 flex-1 pr-8">
+          <div className="min-w-0 flex-1">
             <Link
               href={`/pokemon/${name}`}
               className="font-semibold capitalize hover:underline block"
