@@ -4,9 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { TypeBadge } from "@/components/TypeBadge";
 import { EvolutionChain } from "@/components/EvolutionChain";
+import { KeyValueTable } from "@/components/KeyValueTable";
 import { fetchEvolutionChain } from "@/lib/evolution";
 import type { PokemonDetail } from "@/lib/pokemon-types";
 import type { PokemonDetailExtra, PokemonMoveEntry } from "@/lib/pokemon-extra-types";
+import type { PokemonSpecies } from "@/lib/species-types";
+import { eggCycles, genderRatio, titleCase } from "@/lib/species-utils";
 import MovesList from "./moves.client";
 
 function StatRow({ label, value }: { label: string; value: number }) {
@@ -39,12 +42,10 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
   const p = (await r.json()) as PokemonDetail & PokemonDetailExtra;
 
   const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${p.name}`, { next: { revalidate: 3600 } });
-  const species = speciesRes.ok
-    ? ((await speciesRes.json()) as {
-        genera?: Array<{ genus: string; language: { name: string } }>;
-        flavor_text_entries?: Array<{ flavor_text: string; language: { name: string } }>;
-      })
-    : null;
+  const species = speciesRes.ok ? ((await speciesRes.json()) as PokemonSpecies & {
+    genera?: Array<{ genus: string; language: { name: string } }>;
+    flavor_text_entries?: Array<{ flavor_text: string; language: { name: string } }>;
+  }) : null;
 
   const genus = species?.genera?.find((g) => g.language.name === "en")?.genus;
   const flavor = species?.flavor_text_entries
@@ -61,6 +62,39 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
 
   const evo = await fetchEvolutionChain(p.name).catch(() => null);
   const moves = (p.moves ?? []) as PokemonMoveEntry[];
+
+  const evYield = p.stats
+    .filter((s) => s.effort > 0)
+    .map((s) => `${titleCase(s.stat.name)} +${s.effort}`)
+    .join(", ") || "None";
+
+  const trainingRows = species
+    ? [
+        { k: "EV yield", v: evYield },
+        { k: "Catch rate", v: species.capture_rate },
+        { k: "Base Friendship", v: species.base_happiness },
+        { k: "Base Exp.", v: p.base_experience ?? "—" },
+        { k: "Growth Rate", v: titleCase(species.growth_rate?.name ?? "—") },
+      ]
+    : [];
+
+  const breedingRows = species
+    ? (() => {
+        const g = genderRatio(species.gender_rate);
+        const egg = (species.egg_groups ?? []).map((e) => titleCase(e.name)).join(", ") || "—";
+        const cycles = eggCycles(species.hatch_counter ?? 0);
+        return [
+          { k: "Gender", v: g.label },
+          { k: "Egg Groups", v: egg },
+          { k: "Egg Cycles", v: `${cycles.cycles} (${cycles.steps.toLocaleString()} steps)` },
+          { k: "Habitat", v: species.habitat?.name ? titleCase(species.habitat.name) : "—" },
+        ];
+      })()
+    : [];
+
+  const varietyNames = (species?.varieties ?? [])
+    .map((v) => v.pokemon.name)
+    .filter(Boolean);
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -91,6 +125,17 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
           </div>
 
           {flavor ? <p className="mt-4 text-sm text-muted-foreground max-w-2xl">{flavor}</p> : null}
+
+          {varietyNames.length > 1 ? (
+            <div className="mt-4 flex gap-2 flex-wrap items-center">
+              <span className="text-sm text-muted-foreground">Forms:</span>
+              {varietyNames.map((vn) => (
+                <Link key={vn} href={`/pokemon/${vn}`} className="text-sm underline capitalize">
+                  {vn.replace(/-/g, " ")}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -102,24 +147,14 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
           </CardHeader>
           <Separator />
           <CardContent className="p-4">
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-              <div>
-                <dt className="text-sm text-muted-foreground">Height</dt>
-                <dd className="text-sm font-medium">{p.height ? `${p.height / 10} m` : "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Weight</dt>
-                <dd className="text-sm font-medium">{p.weight ? `${p.weight / 10} kg` : "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Abilities</dt>
-                <dd className="text-sm font-medium">{(p.abilities ?? []).map((a) => a.ability.name).join(", ")}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Base experience</dt>
-                <dd className="text-sm font-medium">{p.base_experience ?? "—"}</dd>
-              </div>
-            </dl>
+            <KeyValueTable
+              rows={[
+                { k: "Height", v: p.height ? `${p.height / 10} m` : "—" },
+                { k: "Weight", v: p.weight ? `${p.weight / 10} kg` : "—" },
+                { k: "Abilities", v: (p.abilities ?? []).map((a) => a.ability.name).join(", ") },
+                { k: "Base experience", v: p.base_experience ?? "—" },
+              ]}
+            />
           </CardContent>
         </Card>
 
@@ -144,6 +179,42 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
           </CardContent>
         </Card>
       </div>
+
+      {/* Training + Breeding */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Training</CardTitle>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-4">
+            {species ? <KeyValueTable rows={trainingRows} /> : <p className="text-sm text-muted-foreground">No training data.</p>}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Breeding</CardTitle>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-4">
+            {species ? <KeyValueTable rows={breedingRows} /> : <p className="text-sm text-muted-foreground">No breeding data.</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Location */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Location</CardTitle>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">
+            Encounters are game-specific. We’ll add encounter tables here next.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Evolution chain */}
       <Card className="mt-6">
