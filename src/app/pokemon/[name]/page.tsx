@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { TypeBadge } from "@/components/TypeBadge";
-import { fetchEvolutionChain, type EvolutionNode } from "@/lib/evolution";
+import { EvolutionChain } from "@/components/EvolutionChain";
+import { fetchEvolutionChain } from "@/lib/evolution";
 import type { PokemonDetail } from "@/lib/pokemon-types";
 import type { PokemonDetailExtra, PokemonMoveEntry } from "@/lib/pokemon-extra-types";
 import MovesList from "./moves.client";
@@ -16,21 +17,6 @@ function StatRow({ label, value }: { label: string; value: number }) {
         <div className="h-full bg-primary" style={{ width: `${Math.min(100, (value / 200) * 100)}%` }} />
       </div>
       <div className="text-sm font-mono text-right">{value}</div>
-    </div>
-  );
-}
-
-function EvolutionView({ node }: { node: EvolutionNode }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="font-medium capitalize">{node.name}</div>
-      {node.evolvesTo.length ? (
-        <div className="pl-4 border-l space-y-3">
-          {node.evolvesTo.map((n) => (
-            <EvolutionView key={n.name} node={n} />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -53,10 +39,12 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
   const p = (await r.json()) as PokemonDetail & PokemonDetailExtra;
 
   const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${p.name}`, { next: { revalidate: 3600 } });
-  const species = speciesRes.ok ? ((await speciesRes.json()) as {
-    genera?: Array<{ genus: string; language: { name: string } }>;
-    flavor_text_entries?: Array<{ flavor_text: string; language: { name: string } }>;
-  }) : null;
+  const species = speciesRes.ok
+    ? ((await speciesRes.json()) as {
+        genera?: Array<{ genus: string; language: { name: string } }>;
+        flavor_text_entries?: Array<{ flavor_text: string; language: { name: string } }>;
+      })
+    : null;
 
   const genus = species?.genera?.find((g) => g.language.name === "en")?.genus;
   const flavor = species?.flavor_text_entries
@@ -72,7 +60,6 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
   const total = hp + atk + def + spa + spd + spe;
 
   const evo = await fetchEvolutionChain(p.name).catch(() => null);
-
   const moves = (p.moves ?? []) as PokemonMoveEntry[];
 
   return (
@@ -84,6 +71,7 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
         <div className="text-sm text-muted-foreground font-mono">#{String(p.id).padStart(4, "0")}</div>
       </div>
 
+      {/* Hero */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 items-start">
         <div className="rounded-xl border bg-card p-4 flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -107,6 +95,7 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        {/* Pokedex data */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pokédex data</CardTitle>
@@ -134,6 +123,7 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
           </CardContent>
         </Card>
 
+        {/* Base stats */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Base stats</CardTitle>
@@ -155,16 +145,18 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
         </Card>
       </div>
 
+      {/* Evolution chain */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Evolution chain</CardTitle>
         </CardHeader>
         <Separator />
         <CardContent className="p-4">
-          {evo ? <EvolutionView node={evo} /> : <p className="text-sm text-muted-foreground">No evolution data.</p>}
+          {evo ? <EvolutionChain node={evo} /> : <p className="text-sm text-muted-foreground">No evolution data.</p>}
         </CardContent>
       </Card>
 
+      {/* Moves */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Moves</CardTitle>
