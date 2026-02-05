@@ -113,13 +113,13 @@ export function PokedexTable({
                   ) : null}
                 </TableCell>
 
-                <TableCell className="min-w-[160px]">
+                <TableCell className="min-w-[180px]">
                   <Link href={`/pokemon/${p.name}`} className="font-medium capitalize hover:underline inline-block">
                     {p.name}
                   </Link>
                 </TableCell>
 
-                <TableCell className="min-w-[160px]">
+                <TableCell className="min-w-[180px]">
                   <div className="flex gap-2 flex-wrap">
                     {p.types.map((t) => (
                       <TypeBadge key={t} type={t} />
@@ -127,13 +127,13 @@ export function PokedexTable({
                   </div>
                 </TableCell>
 
-                <TableCell className="text-right font-mono">{p.stats.total}</TableCell>
-                <TableCell className="text-right font-mono">{p.stats.hp}</TableCell>
-                <TableCell className="text-right font-mono">{p.stats.atk}</TableCell>
-                <TableCell className="text-right font-mono">{p.stats.def}</TableCell>
-                <TableCell className="text-right font-mono">{p.stats.spa}</TableCell>
-                <TableCell className="text-right font-mono">{p.stats.spd}</TableCell>
-                <TableCell className="text-right font-mono">{p.stats.spe}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.total}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.hp}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.atk}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.def}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.spa}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.spd}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.stats.spe}</TableCell>
 
                 <TableCell className="text-right">
                   <Button
