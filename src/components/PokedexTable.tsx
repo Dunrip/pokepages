@@ -69,6 +69,7 @@ export function PokedexTable({
   sortKey,
   sortDir,
   onSort,
+  onResetSort,
 }: {
   rows: PokemonRow[];
   team: string[];
@@ -76,17 +77,41 @@ export function PokedexTable({
   sortKey: SortKey;
   sortDir: "asc" | "desc";
   onSort: (key: SortKey) => void;
+  onResetSort?: () => void;
 }) {
   return (
-    <div className="rounded-xl border bg-card overflow-x-auto shadow-sm">
+    <div className="rounded-xl border bg-card overflow-x-auto">
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/40">
+        <div className="text-xs text-muted-foreground">
+          Sort: <span className="font-medium text-foreground">{sortKey}</span> ({sortDir})
+        </div>
+        {onResetSort ? (
+          <Button size="sm" variant="ghost" onClick={onResetSort}>
+            Reset sort
+          </Button>
+        ) : null}
+      </div>
+
       <Table>
         <TableHeader className="sticky top-0 z-20 bg-muted/80 backdrop-blur supports-[backdrop-filter]:bg-muted/60 border-b">
           <TableRow className="h-11">
-            <SortTh label="#" active={sortKey === "id"} dir={sortDir} onClick={() => onSort("id")} className="w-[76px]" />
-            <TableHead className="w-[56px]"></TableHead>
+            <SortTh
+              label="#"
+              active={sortKey === "id"}
+              dir={sortDir}
+              onClick={() => onSort("id")}
+              className="w-[88px]"
+            />
+            <TableHead className="w-[64px]"></TableHead>
             <SortTh label="Name" active={sortKey === "name"} dir={sortDir} onClick={() => onSort("name")} />
-            <SortTh label="Type" active={sortKey === "type"} dir={sortDir} onClick={() => onSort("type")} />
-            <SortTh label="Total" active={sortKey === "total"} dir={sortDir} onClick={() => onSort("total")} className="text-right" />
+            <SortTh label="Type" active={sortKey === "type"} dir={sortDir} onClick={() => onSort("type")} className="min-w-[180px]" />
+            <SortTh
+              label="Total"
+              active={sortKey === "total"}
+              dir={sortDir}
+              onClick={() => onSort("total")}
+              className="text-right"
+            />
             <SortTh label="HP" active={sortKey === "hp"} dir={sortDir} onClick={() => onSort("hp")} className="text-right" />
             <SortTh label="Atk" active={sortKey === "atk"} dir={sortDir} onClick={() => onSort("atk")} className="text-right" />
             <SortTh label="Def" active={sortKey === "def"} dir={sortDir} onClick={() => onSort("def")} className="text-right" />
@@ -101,8 +126,8 @@ export function PokedexTable({
           {rows.map((p) => {
             const selected = team.includes(p.name);
             return (
-              <TableRow key={p.name} className="hover:bg-muted/50 h-12">
-                <TableCell className="font-mono text-muted-foreground whitespace-nowrap">
+              <TableRow key={p.name} className="hover:bg-muted/30 h-12">
+                <TableCell className="font-mono tabular-nums text-muted-foreground whitespace-nowrap">
                   {String(p.id).padStart(4, "0")}
                 </TableCell>
 
@@ -113,7 +138,7 @@ export function PokedexTable({
                   ) : null}
                 </TableCell>
 
-                <TableCell className="min-w-[180px]">
+                <TableCell className="min-w-[220px]">
                   <Link href={`/pokemon/${p.name}`} className="font-medium capitalize hover:underline inline-block">
                     {p.name}
                   </Link>

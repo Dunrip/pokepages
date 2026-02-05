@@ -145,6 +145,11 @@ export default function HomeClient() {
   const start = (effectivePage - 1) * limit;
   const pageRows = sorted.slice(start, start + limit);
 
+  function onResetSort() {
+    setSortKey("id");
+    setSortDir("asc");
+  }
+
   function onSort(key: SortKey) {
     if (key === sortKey) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -245,6 +250,7 @@ export default function HomeClient() {
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
+            onResetSort={onResetSort}
           />
         ) : null}
 
