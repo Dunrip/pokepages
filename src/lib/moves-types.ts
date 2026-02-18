@@ -4,7 +4,16 @@ export type VersionGroupDetail = {
   version_group: { name: string };
 };
 
+export type MoveMeta = {
+  power: number | null;
+  accuracy: number | null;
+  pp: number | null;
+  type: string | null;
+  category: string | null;
+};
+
 export type MoveWithDetails = {
   move: { name: string; url: string };
   version_group_details: VersionGroupDetail[];
+  meta?: MoveMeta;
 };

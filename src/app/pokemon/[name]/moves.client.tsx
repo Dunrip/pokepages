@@ -14,17 +14,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TypeBadge } from "@/components/TypeBadge";
 import { titleCase } from "@/lib/species-utils";
-import type { MoveWithDetails, VersionGroupDetail } from "@/lib/moves-types";
+import type { MoveMeta, MoveWithDetails, VersionGroupDetail } from "@/lib/moves-types";
 
 type MoveLearnMethod = "level-up" | "machine" | "egg" | "tutor" | string;
 
+type BaseMoveRow = {
+  name: string;
+  version: string;
+  meta: MoveMeta;
+};
+
 type GroupedMoves = {
-  "level-up": Array<{ name: string; level: number; version: string }>;
-  machine: Array<{ name: string; version: string }>;
-  egg: Array<{ name: string; version: string }>;
-  tutor: Array<{ name: string; version: string }>;
-  other: Array<{ name: string; version: string; method: string }>;
+  "level-up": Array<BaseMoveRow & { level: number }>;
+  machine: BaseMoveRow[];
+  egg: BaseMoveRow[];
+  tutor: BaseMoveRow[];
+  other: Array<BaseMoveRow & { method: string }>;
+};
+
+const EMPTY_META: MoveMeta = {
+  power: null,
+  accuracy: null,
+  pp: null,
+  type: null,
+  category: null,
 };
 
 function methodLabel(m: MoveLearnMethod) {
@@ -50,6 +65,31 @@ function dedupeBy<T>(items: T[], keyFn: (item: T) => string): T[] {
     seen.add(key);
     return true;
   });
+}
+
+function valueOrDash(value: number | null) {
+  return value == null ? "—" : value;
+}
+
+function CategoryBadge({ category }: { category: string | null }) {
+  if (!category) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="inline-flex rounded-md border px-2 py-1 text-[11px] font-medium capitalize leading-none bg-muted/50">
+      {category}
+    </span>
+  );
+}
+
+function MoveMetaCells({ meta }: { meta: MoveMeta }) {
+  return (
+    <>
+      <TableCell className="font-mono tabular-nums text-right w-[80px]">{valueOrDash(meta.power)}</TableCell>
+      <TableCell className="font-mono tabular-nums text-right w-[90px]">{valueOrDash(meta.accuracy)}</TableCell>
+      <TableCell className="font-mono tabular-nums text-right w-[70px]">{valueOrDash(meta.pp)}</TableCell>
+      <TableCell className="w-[92px]">{meta.type ? <TypeBadge type={meta.type} /> : <span className="text-muted-foreground">—</span>}</TableCell>
+      <TableCell className="w-[100px]"><CategoryBadge category={meta.category} /></TableCell>
+    </>
+  );
 }
 
 export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
@@ -82,6 +122,7 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
       const name = m.move?.name;
       if (!name) continue;
       if (needle && !name.includes(needle)) continue;
+      const meta = m.meta ?? EMPTY_META;
 
       const details = m.version_group_details ?? [];
       const match = vg !== ALL ? details.filter((d) => d.version_group?.name === vg) : details;
@@ -90,11 +131,11 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
         const version = d.version_group?.name ?? "unknown";
 
         if (method === "level-up") {
-          out["level-up"].push({ name, level: d.level_learned_at ?? 0, version });
+          out["level-up"].push({ name, level: d.level_learned_at ?? 0, version, meta });
         } else if (method === "machine" || method === "egg" || method === "tutor") {
-          out[method].push({ name, version });
+          out[method].push({ name, version, meta });
         } else {
-          out.other.push({ name, version, method });
+          out.other.push({ name, version, method, meta });
         }
       }
     }
@@ -172,6 +213,11 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
               <TableRow>
                 <TableHead className="w-[90px]">Level</TableHead>
                 <TableHead>Move</TableHead>
+                <TableHead className="text-right w-[80px]">Power</TableHead>
+                <TableHead className="text-right w-[90px]">Acc.</TableHead>
+                <TableHead className="text-right w-[70px]">PP</TableHead>
+                <TableHead className="w-[92px]">Type</TableHead>
+                <TableHead className="w-[100px]">Category</TableHead>
                 <TableHead className="w-[220px]">Version group</TableHead>
               </TableRow>
             </TableHeader>
@@ -184,12 +230,13 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
                       {m.name}
                     </Link>
                   </TableCell>
+                  <MoveMetaCells meta={m.meta} />
                   <TableCell className="text-muted-foreground">{titleCase(m.version)}</TableCell>
                 </TableRow>
               ))}
               {!grouped["level-up"].length ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-muted-foreground">
+                  <TableCell colSpan={8} className="text-muted-foreground">
                     No level-up moves for this filter.
                   </TableCell>
                 </TableRow>
@@ -208,6 +255,11 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Move</TableHead>
+                  <TableHead className="text-right w-[80px]">Power</TableHead>
+                  <TableHead className="text-right w-[90px]">Acc.</TableHead>
+                  <TableHead className="text-right w-[70px]">PP</TableHead>
+                  <TableHead className="w-[92px]">Type</TableHead>
+                  <TableHead className="w-[100px]">Category</TableHead>
                   <TableHead className="w-[220px]">Version group</TableHead>
                 </TableRow>
               </TableHeader>
@@ -219,12 +271,13 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
                         {m.name}
                       </Link>
                     </TableCell>
+                    <MoveMetaCells meta={m.meta} />
                     <TableCell className="text-muted-foreground">{titleCase(m.version)}</TableCell>
                   </TableRow>
                 ))}
                 {!grouped[k].length ? (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-muted-foreground">
+                    <TableCell colSpan={7} className="text-muted-foreground">
                       No {methodLabel(k).toLowerCase()} moves for this filter.
                     </TableCell>
                   </TableRow>
@@ -243,6 +296,11 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
             <TableHeader>
               <TableRow>
                 <TableHead>Move</TableHead>
+                <TableHead className="text-right w-[80px]">Power</TableHead>
+                <TableHead className="text-right w-[90px]">Acc.</TableHead>
+                <TableHead className="text-right w-[70px]">PP</TableHead>
+                <TableHead className="w-[92px]">Type</TableHead>
+                <TableHead className="w-[100px]">Category</TableHead>
                 <TableHead className="w-[200px]">Method</TableHead>
                 <TableHead className="w-[220px]">Version group</TableHead>
               </TableRow>
@@ -255,13 +313,14 @@ export default function MovesList({ moves }: { moves: MoveWithDetails[] }) {
                       {m.name}
                     </Link>
                   </TableCell>
+                  <MoveMetaCells meta={m.meta} />
                   <TableCell className="text-muted-foreground">{titleCase(m.method)}</TableCell>
                   <TableCell className="text-muted-foreground">{titleCase(m.version)}</TableCell>
                 </TableRow>
               ))}
               {!grouped.other.length ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-muted-foreground">
+                  <TableCell colSpan={8} className="text-muted-foreground">
                     No other moves for this filter.
                   </TableCell>
                 </TableRow>

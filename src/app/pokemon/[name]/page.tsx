@@ -10,8 +10,10 @@ import { fetchEvolutionChain } from "@/lib/evolution";
 import { fetchEncounters } from "@/lib/encounters";
 import type { PokemonDetail } from "@/lib/pokemon-types";
 import type { PokemonDetailExtra, PokemonMoveEntry } from "@/lib/pokemon-extra-types";
+import type { MoveWithDetails } from "@/lib/moves-types";
 import type { PokemonSpecies } from "@/lib/species-types";
 import { eggCycles, genderRatio, titleCase } from "@/lib/species-utils";
+import { enrichMovesWithMeta } from "@/lib/move-details";
 import MovesList from "./moves.client";
 import {
   Accordion,
@@ -71,7 +73,8 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
   const total = hp + atk + def + spa + spd + spe;
 
   const evo = await fetchEvolutionChain(p.name).catch(() => null);
-  const moves = (p.moves ?? []) as PokemonMoveEntry[];
+  const baseMoves = (p.moves ?? []) as PokemonMoveEntry[];
+  const moves = await enrichMovesWithMeta(baseMoves as MoveWithDetails[]);
 
   const evYield =
     p.stats
