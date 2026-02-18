@@ -96,16 +96,27 @@ export default function HomeClient() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // keyboard shortcut: / focuses search
+  // keyboard shortcuts: / focus search, Esc clear, ←/→ page nav
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "/") return;
       const t = e.target as HTMLElement | null;
       const isTyping = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+
+      if (e.key === "/" && !isTyping) {
+        e.preventDefault();
+        const el = document.getElementById("pokedex-search") as HTMLInputElement | null;
+        el?.focus();
+        return;
+      }
+
+      if (e.key === "Escape") {
+        setSearch("");
+        return;
+      }
+
       if (isTyping) return;
-      e.preventDefault();
-      const el = document.getElementById("pokedex-search") as HTMLInputElement | null;
-      el?.focus();
+      if (e.key === "ArrowRight") setPage((p) => p + 1);
+      if (e.key === "ArrowLeft") setPage((p) => Math.max(1, p - 1));
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

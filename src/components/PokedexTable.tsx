@@ -9,7 +9,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TypeBadge } from "@/components/TypeBadge";
-import type { PokemonRow } from "@/lib/list-detail";
+
+type PokemonRow = {
+  id: number;
+  name: string;
+  sprite: string | null;
+  types: string[];
+  stats: {
+    total: number;
+    hp: number;
+    atk: number;
+    def: number;
+    spa: number;
+    spd: number;
+    spe: number;
+  };
+};
 
 export type SortKey =
   | "id"
@@ -116,7 +131,7 @@ export function PokedexTable({
           {rows.map((p) => {
             const selected = team.includes(p.name);
             return (
-              <TableRow key={p.name} className="hover:bg-muted/30 h-12">
+              <TableRow key={p.name} className="h-12 odd:bg-background even:bg-muted/10 hover:bg-muted/30">
                 <TableCell className="font-mono tabular-nums text-muted-foreground whitespace-nowrap">
                   {String(p.id).padStart(4, "0")}
                 </TableCell>
