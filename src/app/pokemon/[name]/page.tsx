@@ -103,7 +103,7 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
       })()
     : [];
 
-  const varietyNames = (species?.varieties ?? []).map((v) => v.pokemon.name).filter(Boolean);
+  const varieties = (species?.varieties ?? []).filter((v) => v?.pokemon?.name);
 
   const encounters = await fetchEncounters(p.id).catch(() => []);
 
@@ -137,14 +137,30 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
 
           {flavor ? <p className="mt-4 text-sm text-muted-foreground max-w-2xl">{flavor}</p> : null}
 
-          {varietyNames.length > 1 ? (
-            <div className="mt-4 flex gap-2 flex-wrap items-center">
-              <span className="text-sm text-muted-foreground">Forms:</span>
-              {varietyNames.map((vn) => (
-                <Link key={vn} href={`/pokemon/${vn}`} className="text-sm underline capitalize">
-                  {vn.replace(/-/g, " ")}
-                </Link>
-              ))}
+          {varieties.length > 1 ? (
+            <div className="mt-5 rounded-lg border bg-muted/20 p-3">
+              <div className="text-sm text-muted-foreground mb-2">Forms</div>
+              <div className="flex gap-2 flex-wrap items-center">
+                {varieties.map((v) => {
+                  const vn = v.pokemon.name;
+                  const active = vn === p.name;
+                  return (
+                    <Link
+                      key={vn}
+                      href={`/pokemon/${vn}`}
+                      className={
+                        "text-sm capitalize px-2.5 py-1 rounded-md border transition-colors " +
+                        (active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-muted")
+                      }
+                    >
+                      {vn.replace(/-/g, " ")}
+                      {v.is_default ? <span className="ml-1 text-[11px] opacity-80">(default)</span> : null}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
         </div>
@@ -214,6 +230,7 @@ export default async function PokemonPage({ params }: { params: Promise<{ name: 
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">Location</CardTitle>
+          <p className="text-sm text-muted-foreground">Game-specific wild encounter data across version groups.</p>
         </CardHeader>
         <Separator />
         <CardContent className="p-4">

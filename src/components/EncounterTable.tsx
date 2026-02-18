@@ -7,10 +7,9 @@ function cleanArea(name: string) {
 
 export function EncounterTable({ encounters }: { encounters: EncounterLocation[] }) {
   if (!encounters.length) {
-    return <p className="text-sm text-muted-foreground">No encounter data.</p>;
+    return <p className="text-sm text-muted-foreground">No encounter data for wild locations.</p>;
   }
 
-  // flatten to a simple table: location area + version + method + levels + chance
   const rows = encounters.flatMap((e) =>
     (e.version_details ?? []).flatMap((vd) =>
       (vd.encounter_details ?? []).map((d) => ({
@@ -24,7 +23,18 @@ export function EncounterTable({ encounters }: { encounters: EncounterLocation[]
     )
   );
 
-  const shown = rows.slice(0, 120);
+  const deduped = Array.from(
+    new Map(rows.map((r) => [`${r.area}|${r.version}|${r.method}|${r.min}|${r.max}|${r.chance}`, r])).values()
+  ).sort(
+    (a, b) =>
+      a.area.localeCompare(b.area) ||
+      a.version.localeCompare(b.version) ||
+      a.method.localeCompare(b.method) ||
+      a.min - b.min ||
+      a.max - b.max
+  );
+
+  const shown = deduped.slice(0, 180);
 
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -50,8 +60,8 @@ export function EncounterTable({ encounters }: { encounters: EncounterLocation[]
           ))}
         </tbody>
       </table>
-      {rows.length > shown.length ? (
-        <div className="p-2 text-xs text-muted-foreground">Showing {shown.length} / {rows.length} rows (capped).</div>
+      {deduped.length > shown.length ? (
+        <div className="p-2 text-xs text-muted-foreground">Showing {shown.length} / {deduped.length} rows (capped).</div>
       ) : null}
     </div>
   );
