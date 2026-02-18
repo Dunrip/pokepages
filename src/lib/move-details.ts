@@ -18,28 +18,35 @@ type MoveApiResponse = {
 };
 
 const fetchMoveMeta = cache(async (url: string): Promise<MoveMeta> => {
-  const r = await fetch(url, { next: { revalidate: 3600 } });
-  if (!r.ok) return EMPTY_META;
-  const data = (await r.json()) as MoveApiResponse;
-  return {
-    power: data.power ?? null,
-    accuracy: data.accuracy ?? null,
-    pp: data.pp ?? null,
-    type: data.type?.name ?? null,
-    category: data.damage_class?.name ?? null,
-  };
+  try {
+    const r = await fetch(url, { next: { revalidate: 3600 } });
+    if (!r.ok) return EMPTY_META;
+    const data = (await r.json()) as MoveApiResponse;
+    return {
+      power: data.power ?? null,
+      accuracy: data.accuracy ?? null,
+      pp: data.pp ?? null,
+      type: data.type?.name ?? null,
+      category: data.damage_class?.name ?? null,
+    };
+  } catch {
+    return EMPTY_META;
+  }
 });
+
+const MOVE_META_FETCH_CONCURRENCY = 8;
 
 export async function enrichMovesWithMeta(moves: MoveWithDetails[]): Promise<MoveWithDetails[]> {
   const uniqueUrls = Array.from(new Set(moves.map((m) => m.move?.url).filter(Boolean) as string[]));
 
   const metaByUrl = new Map<string, MoveMeta>();
-  await Promise.all(
-    uniqueUrls.map(async (url) => {
-      const meta = await fetchMoveMeta(url);
-      metaByUrl.set(url, meta);
-    })
-  );
+  for (let i = 0; i < uniqueUrls.length; i += MOVE_META_FETCH_CONCURRENCY) {
+    const batch = uniqueUrls.slice(i, i + MOVE_META_FETCH_CONCURRENCY);
+    const metas = await Promise.all(batch.map((url) => fetchMoveMeta(url)));
+    for (let j = 0; j < batch.length; j += 1) {
+      metaByUrl.set(batch[j], metas[j]);
+    }
+  }
 
   return moves.map((m) => {
     const url = m.move?.url;
